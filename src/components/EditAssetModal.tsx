@@ -1,94 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { Employee } from '../types';
-import { SearchableSelect } from './SearchableSelect';
+import { Asset, Employee } from '../types';
 
-interface AddAssetModalProps {
+interface EditAssetModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => Promise<void>;
+  asset: Asset | null;
 }
 
-export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps) {
+export function EditAssetModal({ isOpen, onClose, onSuccess, asset }: EditAssetModalProps) {
   const [error, setError] = useState('');
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [newAsset, setNewAsset] = useState({
-    name: '',
-    type: 'laptop',
-    serial_number: '',
-    status: 'available',
-    purchase_date: new Date().toISOString().split('T')[0],
-    purchase_price: '',
-    assigned_to: ''
-  });
+  const [editedAsset, setEditedAsset] = useState<Asset | null>(null);
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
-    const { data } = await supabase.from('employees').select('*');
-    if (data) {
-      setEmployees(data);
+    if (asset) {
+      setEditedAsset(asset);
     }
-  };
+  }, [asset]);
 
-  const handleAddAsset = async (e: React.FormEvent) => {
+  if (!isOpen || !editedAsset) return null;
+
+  const handleEditAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!newAsset.name || !newAsset.serial_number || !newAsset.purchase_date || !newAsset.purchase_price) {
+    if (!editedAsset.name || !editedAsset.serial_number || !editedAsset.purchase_date) {
       setError('Please fill in all required fields');
       return;
     }
 
     try {
-      const { data: asset, error: assetError } = await supabase
+      const { error: updateError } = await supabase
         .from('assets')
-        .insert([{
-          name: newAsset.name,
-          type: newAsset.type,
-          serial_number: newAsset.serial_number,
-          status: newAsset.assigned_to ? 'assigned' : 'available',
-          purchase_date: newAsset.purchase_date,
-          purchase_price: parseFloat(newAsset.purchase_price)
-        }])
-        .select()
-        .single();
+        .update({
+          name: editedAsset.name,
+          type: editedAsset.type,
+          serial_number: editedAsset.serial_number,
+          status: editedAsset.status,
+          purchase_date: editedAsset.purchase_date,
+          purchase_price: editedAsset.purchase_price
+        })
+        .eq('id', editedAsset.id);
 
-      if (assetError) throw assetError;
-
-      if (newAsset.assigned_to && asset) {
-        const { error: assignmentError } = await supabase
-          .from('asset_assignments')
-          .insert([{
-            asset_id: asset.id,
-            employee_id: newAsset.assigned_to,
-            assigned_date: new Date().toISOString(),
-            notes: `Initial assignment on asset creation`
-          }]);
-
-        if (assignmentError) throw assignmentError;
-      }
+      if (updateError) throw updateError;
 
       await onSuccess();
       onClose();
-      setNewAsset({
-        name: '',
-        type: 'laptop',
-        serial_number: '',
-        status: 'available',
-        purchase_date: new Date().toISOString().split('T')[0],
-        purchase_price: '',
-        assigned_to: ''
-      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while adding the asset');
+      setError(err instanceof Error ? err.message : 'An error occurred while updating the asset');
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity">
@@ -107,8 +70,8 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
             </div>
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                <h3 className="text-lg font-semibold leading-6 text-gray-900">Add New Asset</h3>
-                <form onSubmit={handleAddAsset} className="mt-4 space-y-4">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900">Edit Asset</h3>
+                <form onSubmit={handleEditAsset} className="mt-4 space-y-4">
                   {error && (
                     <div className="rounded-md bg-red-50 p-4">
                       <div className="flex">
@@ -126,8 +89,8 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
                       type="text"
                       name="name"
                       id="name"
-                      value={newAsset.name}
-                      onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+                      value={editedAsset.name}
+                      onChange={(e) => setEditedAsset({ ...editedAsset, name: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
@@ -138,8 +101,8 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
                     <select
                       id="type"
                       name="type"
-                      value={newAsset.type}
-                      onChange={(e) => setNewAsset({ ...newAsset, type: e.target.value })}
+                      value={editedAsset.type}
+                      onChange={(e) => setEditedAsset({ ...editedAsset, type: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                       <option value="laptop">Laptop</option>
@@ -157,23 +120,27 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
                       type="text"
                       name="serial_number"
                       id="serial_number"
-                      value={newAsset.serial_number}
-                      onChange={(e) => setNewAsset({ ...newAsset, serial_number: e.target.value })}
+                      value={editedAsset.serial_number}
+                      onChange={(e) => setEditedAsset({ ...editedAsset, serial_number: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
                   <div>
-                    <label htmlFor="assigned_to" className="block text-sm font-medium text-gray-700">
-                      Assign To (Optional)
+                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                      Status
                     </label>
-                    <SearchableSelect
-                      options={employees}
-                      value={newAsset.assigned_to}
-                      onChange={(value) => setNewAsset({ ...newAsset, assigned_to: value })}
-                      getOptionLabel={(employee) => employee.name}
-                      getOptionValue={(employee) => employee.id}
-                      placeholder="Search employees..."
-                    />
+                    <select
+                      id="status"
+                      name="status"
+                      value={editedAsset.status}
+                      onChange={(e) => setEditedAsset({ ...editedAsset, status: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    >
+                      <option value="available">Available</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="retired">Retired</option>
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="purchase_date" className="block text-sm font-medium text-gray-700">
@@ -183,8 +150,8 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
                       type="date"
                       name="purchase_date"
                       id="purchase_date"
-                      value={newAsset.purchase_date}
-                      onChange={(e) => setNewAsset({ ...newAsset, purchase_date: e.target.value })}
+                      value={editedAsset.purchase_date}
+                      onChange={(e) => setEditedAsset({ ...editedAsset, purchase_date: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
@@ -197,8 +164,8 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
                       step="0.01"
                       name="purchase_price"
                       id="purchase_price"
-                      value={newAsset.purchase_price}
-                      onChange={(e) => setNewAsset({ ...newAsset, purchase_price: e.target.value })}
+                      value={editedAsset.purchase_price}
+                      onChange={(e) => setEditedAsset({ ...editedAsset, purchase_price: parseFloat(e.target.value) })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
@@ -207,7 +174,7 @@ export function AddAssetModal({ isOpen, onClose, onSuccess }: AddAssetModalProps
                       type="submit"
                       className="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
                     >
-                      Add Asset
+                      Save Changes
                     </button>
                     <button
                       type="button"

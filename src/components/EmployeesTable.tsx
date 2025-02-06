@@ -1,14 +1,23 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Edit2 } from 'lucide-react';
 import { Employee, Assignment } from '../types';
+import { EditEmployeeModal } from './EditEmployeeModal';
 
 interface EmployeesTableProps {
   employees: Employee[];
   assignments: Assignment[];
   onAddEmployee: () => void;
+  onRefresh: () => Promise<void>;
 }
 
-export function EmployeesTable({ employees, assignments, onAddEmployee }: EmployeesTableProps) {
+export function EmployeesTable({ employees, assignments, onAddEmployee, onRefresh }: EmployeesTableProps) {
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const getActiveAssignments = (employeeId: string) => {
+    return assignments.filter(a => a.employee_id === employeeId && !a.return_date);
+  };
+
   return (
     <div>
       <div className="sm:flex sm:items-center">
@@ -48,6 +57,9 @@ export function EmployeesTable({ employees, assignments, onAddEmployee }: Employ
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Assigned Assets
                     </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -59,7 +71,18 @@ export function EmployeesTable({ employees, assignments, onAddEmployee }: Employ
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{employee.email}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{employee.department}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {assignments.filter(a => a.employee_id === employee.id && !a.return_date).length}
+                        {getActiveAssignments(employee.id).length}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <button
+                          onClick={() => {
+                            setSelectedEmployee(employee);
+                            setShowEditModal(true);
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -69,6 +92,16 @@ export function EmployeesTable({ employees, assignments, onAddEmployee }: Employ
           </div>
         </div>
       </div>
+
+      <EditEmployeeModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedEmployee(null);
+        }}
+        onSuccess={onRefresh}
+        employee={selectedEmployee}
+      />
     </div>
   );
 }

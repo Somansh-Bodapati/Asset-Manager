@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Plus, Edit2 } from 'lucide-react';
 import { Asset } from '../types';
 import { getAssetStatusColor } from '../utils/helpers';
+import { EditAssetModal } from './EditAssetModal';
 
 interface AssetsTableProps {
   assets: Asset[];
   onAddAsset: () => void;
+  onRefresh: () => Promise<void>;
 }
 
-export function AssetsTable({ assets, onAddAsset }: AssetsTableProps) {
+export function AssetsTable({ assets, onAddAsset, onRefresh }: AssetsTableProps) {
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
   return (
     <div>
       <div className="sm:flex sm:items-center">
@@ -55,6 +60,9 @@ export function AssetsTable({ assets, onAddAsset }: AssetsTableProps) {
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Price
                     </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -76,6 +84,17 @@ export function AssetsTable({ assets, onAddAsset }: AssetsTableProps) {
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                         ${asset.purchase_price.toFixed(2)}
                       </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <button
+                          onClick={() => {
+                            setSelectedAsset(asset);
+                            setShowEditModal(true);
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -84,6 +103,16 @@ export function AssetsTable({ assets, onAddAsset }: AssetsTableProps) {
           </div>
         </div>
       </div>
+
+      <EditAssetModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedAsset(null);
+        }}
+        onSuccess={onRefresh}
+        asset={selectedAsset}
+      />
     </div>
   );
 }

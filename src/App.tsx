@@ -86,6 +86,7 @@ function App() {
               <AssetsTable
                 assets={assets}
                 onAddAsset={() => setShowAddAssetModal(true)}
+                onRefresh={fetchData}
               />
             )}
 
@@ -94,6 +95,7 @@ function App() {
                 employees={employees}
                 assignments={assignments}
                 onAddEmployee={() => setShowAddEmployeeModal(true)}
+                onRefresh={fetchData}
               />
             )}
           </div>
